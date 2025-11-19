@@ -555,6 +555,7 @@ const AdminView = ({ users, collectionRef, goBack }) => {
       const shuffledB = shuffle([...deptB]);
       
       if (shuffledA.length === 0 || shuffledB.length === 0) {
+          // Edge Case: Only 1 Dept exists. Circle match all.
           const all = [...shuffledA, ...shuffledB];
           const shuffledAll = shuffle(all);
            for (let i = 0; i < shuffledAll.length; i++) {
@@ -565,23 +566,36 @@ const AdminView = ({ users, collectionRef, goBack }) => {
                 });
             }
       } else {
+        // Normal Case: A and B both exist
         const minSize = Math.min(shuffledA.length, shuffledB.length);
         const leftovers = [];
 
+        // 1. Core Matching: A <-> B but offset B's return target to avoid reciprocity
+        // A[i] -> B[i]
+        // B[i] -> A[(i+1)%minSize]  <-- This shift prevents A[i]->B[i]->A[i] mutual loops if minSize > 1
         for (let i = 0; i < minSize; i++) {
           const pA = shuffledA[i];
           const pB = shuffledB[i];
+          
+          // A gives to B
           batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'participants', pA.id), {
               assignedTo: pB.id, assignedToName: pB.name, assignedToDepartment: pB.department, assignedToWishes: pB.wishes
           });
+
+          // B gives to A (shifted)
+          // If minSize is 1, (i+1)%1 is 0, so B0 -> A0. Mutual pair unavoidable.
+          // If minSize > 1, B[i] -> A[next]
+          const targetA = shuffledA[(i + 1) % minSize];
           batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'participants', pB.id), {
-              assignedTo: pA.id, assignedToName: pA.name, assignedToDepartment: pA.department, assignedToWishes: pA.wishes
+              assignedTo: targetA.id, assignedToName: targetA.name, assignedToDepartment: targetA.department, assignedToWishes: targetA.wishes
           });
         }
 
+        // 2. Collect Leftovers
         if (shuffledA.length > minSize) leftovers.push(...shuffledA.slice(minSize));
         if (shuffledB.length > minSize) leftovers.push(...shuffledB.slice(minSize));
 
+        // 3. Circle Match Leftovers
         if (leftovers.length > 0) {
           if (leftovers.length === 1) {
               const loneWolf = leftovers[0];
@@ -618,7 +632,7 @@ const AdminView = ({ users, collectionRef, goBack }) => {
     setModalConfig({
       isOpen: true,
       title: '確認開始抽籤？',
-      content: '系統將會打亂順序並進行 A/B 部門自動配對。這將會覆蓋目前的任何配對結果。',
+      content: '系統將會打亂順序並進行 A/B 部門自動配對 (防止互抽)。這將會覆蓋目前的任何配對結果。',
       onConfirm: executeDraw,
       onCancel: () => setModalConfig(prev => ({ ...prev, isOpen: false })),
       isDanger: false
@@ -674,7 +688,7 @@ const AdminView = ({ users, collectionRef, goBack }) => {
     let text = "🎄 小天使小主人 - 配對結果清單 🎄\n\n";
     users.forEach(u => {
       text += `姓名：${u.name} (${u.department})\n`;
-      text += `你要送禮物的對象：${u.assignedToName} (${u.assignedToDepartment})\n`;
+      text += `你的小天使👼：${u.assignedToName} (${u.assignedToDepartment})\n`;
       text += `對方的願望：${u.assignedToWishes ? u.assignedToWishes.join(', ') : '無'}\n`;
       text += `-----------------------------------\n`;
     });
@@ -823,7 +837,7 @@ const AdminView = ({ users, collectionRef, goBack }) => {
                       <td className="px-6 py-4 align-top">
                         {user.assignedToName ? (
                           <div className="bg-indigo-50 rounded-lg p-2">
-                            <div className="text-xs text-indigo-400 mb-1">送給 →</div>
+                            <div className="text-xs text-indigo-400 mb-1">你的小天使👼</div>
                             <div className="font-bold text-indigo-700">{user.assignedToName}</div>
                           </div>
                         ) : (
