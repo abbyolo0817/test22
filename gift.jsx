@@ -44,11 +44,24 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration & Initialization ---
-const firebaseConfig = JSON.parse(__firebase_config);
+
+// 1. 貼上您剛剛複製的設定檔
+const firebaseConfig = {
+  apiKey: "AIzaSyBu-q_aqdsEAo3paJIbLXj0QQ6Dy-1xJ3Y",
+  authDomain: "gift-exchange-app-c891a.firebaseapp.com",
+  projectId: "gift-exchange-app-c891a",
+  storageBucket: "gift-exchange-app-c891a.firebasestorage.app",
+  messagingSenderId: "1030609890092",
+  appId: "1:1030609890092:web:262530dca17c358b8bda89"
+};
+
+// 2. 初始化 Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// 3. 自訂一個 ID 用於資料庫路徑 (隨便取個英文名字即可)
+const appId = 'my-xmas-party-2024';
 
 // --- Components ---
 
